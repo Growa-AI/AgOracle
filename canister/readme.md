@@ -246,23 +246,6 @@ func createClaim(
    - Advanced analytics
    - Risk assessment tools
 
-## Best Practices
-
-1. **System Administration**
-   - Regular service audits
-   - Proper registry maintenance
-   - Backup procedures
-
-2. **Insurance Operations**
-   - Regular policy reviews
-   - Claim verification procedures
-   - Credit system monitoring
-
-3. **User Management**
-   - Clear documentation
-   - Support procedures
-   - Regular updates
-
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
