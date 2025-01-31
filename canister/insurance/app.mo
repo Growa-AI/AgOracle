@@ -714,6 +714,54 @@ actor InsuranceSystem {
     }
   };
 
+  // Function to check if a user is registered
+  public query func isRegistered(userId : Principal) : async Result.Result<Bool, Text> {
+    if (not validatePrincipal(userId)) return #err("Invalid principal");
+
+    switch (users.get(userId)) {
+      case (?_) #ok(true);
+      case (null) #ok(false)
+    }
+  };
+
+  // Function to withdraw cycles (admin only)
+  public shared ({caller}) func withdraw(amount : Nat, recipient : Principal) : async Result.Result<Text, Text> {
+    switch (currentAdmin) {
+      case (null) #err("No admin set");
+      case (?admin) {
+        if (caller != admin) {
+          return #err("Only admin can withdraw cycles")
+        };
+
+        let available = ExperimentalCycles.balance();
+        if (available < amount) {
+          return #err("Insufficient cycles. Available: " # Nat.toText(available) # ", Requested: " # Nat.toText(amount))
+        };
+
+        try {
+          // Create a management canister actor
+          let recipient_actor = actor (Principal.toText(recipient)) : actor {
+            wallet_receive : shared () -> async Nat
+          };
+
+          // Add cycles to the call
+          ExperimentalCycles.add(amount);
+
+          // Call wallet_receive of the recipient canister
+          let cycles_received = await recipient_actor.wallet_receive();
+
+          if (cycles_received == amount) {
+            #ok("Successfully transferred " # Nat.toText(amount) # " cycles to " # Principal.toText(recipient))
+          } else {
+            #err("Transfer failed. Expected to transfer " # Nat.toText(amount) # " cycles but transferred " # Nat.toText(cycles_received))
+          }
+        } catch (e) {
+          #err("Error during transfer: " # Error.message(e))
+        }
+      }
+    }
+  };
+
   // Utility functions
   private func usdToCycles(usdAmount : Float) : Nat {
     let icpAmount = usdAmount / currentUSDRate;
