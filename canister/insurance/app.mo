@@ -581,7 +581,7 @@ actor InsuranceSystem {
     claimAmount : Float,
     damagePertentage : Float,
     claimId : Text,
-    dataEvent : Text  // Added this parameter
+    dataEvent : Text 
 ) : async Result.Result<Text, Text> {
     if (not validatePrincipal(caller)) return #err("Invalid principal");
 
