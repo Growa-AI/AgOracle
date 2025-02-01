@@ -80,6 +80,7 @@ actor InsuranceSystem {
     status : ClaimStatus;
     dataMatchType : ?DataMatchType;
     report : ?Text;
+    dataEvent : Text;  // Added this field
     creationTime : Time.Time
   };
 
@@ -273,22 +274,22 @@ actor InsuranceSystem {
   public query func getAllPendingClaims() : async Result.Result<[Claim], Text> {
     var pendingClaims : [Claim] = [];
     for ((_, claim) in claims.entries()) {
-      if (claim.status == #pending) {
-        pendingClaims := Array.append(pendingClaims, [claim])
-      }
+        if (claim.status == #pending) {
+            pendingClaims := Array.append(pendingClaims, [claim])
+        }
     };
     #ok(pendingClaims)
-  };
+};
 
   public query func getClaim(userId : Principal, claimId : Text) : async Result.Result<Claim, Text> {
     if (not validatePrincipal(userId)) return #err("Invalid principal");
 
     let key = Text.concat(Principal.toText(userId), "_" # claimId);
     switch (claims.get(key)) {
-      case (?claim) #ok(claim);
-      case (null) #err("Claim not found")
+        case (?claim) #ok(claim);
+        case (null) #err("Claim not found")
     }
-  };
+};
 
   public query func getUserCredits(userId : Principal) : async Result.Result<UserCredits, Text> {
     if (not validatePrincipal(userId)) return #err("Invalid principal");
@@ -525,38 +526,39 @@ actor InsuranceSystem {
     newStatus : ClaimStatus,
     dataMatchType : ?DataMatchType,
     report : ?Text
-  ) : async Result.Result<Text, Text> {
+) : async Result.Result<Text, Text> {
     if (not validatePrincipal(caller)) return #err("Invalid principal");
 
     switch (currentAdmin) {
-      case (?admin) {
-        if (caller != admin) return #err("Only admin can update claim status");
+        case (?admin) {
+            if (caller != admin) return #err("Only admin can update claim status");
 
-        let key = Text.concat(Principal.toText(userId), "_" # claimId);
-        switch (claims.get(key)) {
-          case (?claim) {
-            let updatedClaim : Claim = {
-              claimId = claim.claimId;
-              policyId = claim.policyId;
-              userId = claim.userId;
-              locationPoint = claim.locationPoint;
-              claimReason = claim.claimReason;
-              claimAmount = claim.claimAmount;
-              damagePertentage = claim.damagePertentage;
-              status = newStatus;
-              dataMatchType = dataMatchType;
-              report = report;
-              creationTime = claim.creationTime
-            };
-            claims.put(key, updatedClaim);
-            #ok("Claim status updated successfully")
-          };
-          case (null) #err("Claim not found")
-        }
-      };
-      case (null) #err("No admin set")
+            let key = Text.concat(Principal.toText(userId), "_" # claimId);
+            switch (claims.get(key)) {
+                case (?claim) {
+                    let updatedClaim : Claim = {
+                        claimId = claim.claimId;
+                        policyId = claim.policyId;
+                        userId = claim.userId;
+                        locationPoint = claim.locationPoint;
+                        claimReason = claim.claimReason;
+                        claimAmount = claim.claimAmount;
+                        damagePertentage = claim.damagePertentage;
+                        status = newStatus;
+                        dataMatchType = dataMatchType;
+                        report = report;
+                        dataEvent = claim.dataEvent;  
+                        creationTime = claim.creationTime
+                    };
+                    claims.put(key, updatedClaim);
+                    #ok("Claim status updated successfully")
+                };
+                case (null) #err("Claim not found")
+            }
+        };
+        case (null) #err("No admin set")
     }
-  };
+};
 
   // Funzione aggiornata per ottenere i claims dell'utente con il report
   public query func getUserClaims(userId : Principal) : async Result.Result<[Claim], Text> {
@@ -564,12 +566,12 @@ actor InsuranceSystem {
 
     var userClaims : [Claim] = [];
     for ((_, claim) in claims.entries()) {
-      if (claim.userId == userId) {
-        userClaims := Array.append(userClaims, [claim])
-      }
+        if (claim.userId == userId) {
+            userClaims := Array.append(userClaims, [claim])
+        }
     };
     #ok(userClaims)
-  };
+};
 
   // Funzione modificata per la creazione del claim con validazione della policy
   public shared ({caller}) func createClaim(
@@ -578,72 +580,73 @@ actor InsuranceSystem {
     claimReason : ClaimReason,
     claimAmount : Float,
     damagePertentage : Float,
-    claimId : Text
-  ) : async Result.Result<Text, Text> {
+    claimId : Text,
+    dataEvent : Text  // Added this parameter
+) : async Result.Result<Text, Text> {
     if (not validatePrincipal(caller)) return #err("Invalid principal");
 
     switch (users.get(caller)) {
-      case (null) return #err("User must be registered before creating a claim");
-      case (?user) {
-        if (user.credits.claimCredits == 0) {
-          return #err("Insufficient claim credits")
-        };
-
-        // Verifica che la policy esista e appartenga all'utente
-        let policyKey = Text.concat(Principal.toText(caller), "_" # policyId);
-        switch (policies.get(policyKey)) {
-          case (null) return #err("Policy not found or does not belong to user");
-          case (?policy) {
-            if (policy.userId != caller) {
-              return #err("Policy does not belong to user")
+        case (null) return #err("User must be registered before creating a claim");
+        case (?user) {
+            if (user.credits.claimCredits == 0) {
+                return #err("Insufficient claim credits")
             };
 
-            switch (validateClaim(claimId, locationPoint, claimAmount, damagePertentage)) {
-              case (#err(msg)) return #err(msg);
-              case (#ok()) {
-                let uniqueClaimKey = Text.concat(Principal.toText(caller), "_" # claimId);
-
-                switch (claims.get(uniqueClaimKey)) {
-                  case (?_) return #err("Claim with this ID already exists");
-                  case (null) {
-                    let newClaim : Claim = {
-                      claimId = claimId;
-                      policyId = policyId;
-                      userId = caller;
-                      locationPoint = locationPoint;
-                      claimReason = claimReason;
-                      claimAmount = claimAmount;
-                      damagePertentage = damagePertentage;
-                      status = #pending;
-                      dataMatchType = null;
-                      report = null;
-                      creationTime = Time.now()
+            let policyKey = Text.concat(Principal.toText(caller), "_" # policyId);
+            switch (policies.get(policyKey)) {
+                case (null) return #err("Policy not found or does not belong to user");
+                case (?policy) {
+                    if (policy.userId != caller) {
+                        return #err("Policy does not belong to user")
                     };
 
-                    let updatedUser : User = {
-                      id = user.id;
-                      registrationTime = user.registrationTime;
-                      credits = {
-                        onboardingCredits = user.credits.onboardingCredits;
-                        claimCredits = user.credits.claimCredits - 1
-                      }
-                    };
+                    switch (validateClaim(claimId, locationPoint, claimAmount, damagePertentage)) {
+                        case (#err(msg)) return #err(msg);
+                        case (#ok()) {
+                            let uniqueClaimKey = Text.concat(Principal.toText(caller), "_" # claimId);
 
-                    claims.put(uniqueClaimKey, newClaim);
-                    users.put(caller, updatedUser);
-                    #ok(
-                      "Claim created successfully. Remaining claim credits: " #
-                      Nat.toText(updatedUser.credits.claimCredits)
-                    )
-                  }
+                            switch (claims.get(uniqueClaimKey)) {
+                                case (?_) return #err("Claim with this ID already exists");
+                                case (null) {
+                                    let newClaim : Claim = {
+                                        claimId = claimId;
+                                        policyId = policyId;
+                                        userId = caller;
+                                        locationPoint = locationPoint;
+                                        claimReason = claimReason;
+                                        claimAmount = claimAmount;
+                                        damagePertentage = damagePertentage;
+                                        status = #pending;
+                                        dataMatchType = null;
+                                        report = null;
+                                        dataEvent = dataEvent;  
+                                        creationTime = Time.now()
+                                    };
+
+                                    let updatedUser : User = {
+                                        id = user.id;
+                                        registrationTime = user.registrationTime;
+                                        credits = {
+                                            onboardingCredits = user.credits.onboardingCredits;
+                                            claimCredits = user.credits.claimCredits - 1
+                                        }
+                                    };
+
+                                    claims.put(uniqueClaimKey, newClaim);
+                                    users.put(caller, updatedUser);
+                                    #ok(
+                                        "Claim created successfully. Remaining claim credits: " #
+                                        Nat.toText(updatedUser.credits.claimCredits)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
-              }
             }
-          }
         }
-      }
     }
-  };
+};
 
   public shared ({caller}) func purchaseOnboardingCredits(bundles : Nat) : async Result.Result<Text, Text> {
     if (not validatePrincipal(caller)) return #err("Invalid principal");
