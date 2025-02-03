@@ -1,254 +1,197 @@
-# Merkle Tree ICP Smart Contract
+# Certified Merkle Tree Canister
 
-A comprehensive Motoko smart contract implementation for Internet Computer that enables data verification and integrity checking using Merkle Tree structures. This contract provides a robust solution for verifying data authenticity without revealing the entire dataset, making it ideal for applications requiring data privacy while maintaining verifiability.
+A Motoko-based Internet Computer canister that implements certified Merkle trees for secure data verification and querying. This canister provides a robust solution for maintaining verifiable data structures on the Internet Computer blockchain.
 
-## Overview
+## Features
 
-The Merkle Tree smart contract allows organizations and individuals to create cryptographic proofs of data inclusion. This is particularly useful when you need to:
-- Verify that a piece of data was part of a larger dataset without exposing the entire dataset
-- Provide blockchain-based proof of data authenticity
-- Enable efficient verification of large datasets
-- Create tamper-evident data structures
+- **Certified Data Storage**: Implements secure data certification with timestamps
+- **Merkle Tree Implementation**: Full Merkle tree implementation with proof generation and verification
+- **Query Call Security**: Enhanced security for query calls using certified variables
+- **Temporal Validation**: Built-in timestamp verification to prevent replay attacks
+- **Upgradeable**: Maintains data consistency across canister upgrades
+- **Admin Controls**: Secure admin-only operations for tree creation and management
 
-### Key Benefits
+## Prerequisites
 
-1. **Data Privacy**: Only share the specific data and its proof, not the entire dataset
-2. **Efficiency**: Verification requires minimal computational resources
-3. **Blockchain Integration**: Leverage Internet Computer's security and immutability
-4. **Scalability**: Handle large datasets efficiently
-5. **Persistence**: Data and proofs remain available across contract upgrades
+- [dfx](https://internetcomputer.org/docs/current/developer-docs/build/install-upgrade-remove) >= 0.9.0
+- [Node.js](https://nodejs.org) >= 14.0.0
+- [Internet Computer CLI](https://internetcomputer.org/docs/current/developer-docs/build/install-upgrade-remove)
 
-## Technical Details
+## Installation
 
-### Architecture
-
-The contract uses a sophisticated data structure combining:
-- Merkle Trees for cryptographic proofs
-- Stable storage for persistence
-- HashMaps for efficient data retrieval
-- Buffer management for dynamic operations
-
-### Data Flow
-
-1. Data Collection:
-   ```
-   Raw Data -> Hash Generation -> Leaf Nodes -> Tree Construction -> Root Hash
-   ```
-
-2. Proof Generation:
-   ```
-   Data Request -> Hash Lookup -> Sibling Collection -> Proof Assembly
-   ```
-
-3. Verification Process:
-   ```
-   Data + Proof -> Hash Recreation -> Root Comparison -> Verification Result
-   ```
-
-## Implementation Features
-
-### Admin Control
-```motoko
-public shared({caller}) func registerAdmin() : async Result.Result<Text, Text>
-```
-- Establishes a single administrative account
-- Controls tree creation permissions
-- Ensures data integrity management
-
-### Tree Creation
-```motoko
-public shared({caller}) func createMerkleTree(data: [Text]) : async Result.Result<HashType, Text>
-```
-- Accepts arrays of text data
-- Generates cryptographic hashes
-- Constructs balanced Merkle Trees
-- Returns unique root hash identifier
-
-### Proof Generation
-```motoko
-public query func getMerkleProof(data: Text) : async ?[HashType]
-```
-- Creates verification paths
-- Assembles proof arrays
-- Enables efficient verification
-
-### Verification Systems
-```motoko
-public query func verifyDataInTree(data: Text, rootHash: Text) : async Bool
-```
-- Validates data membership
-- Checks proof authenticity
-- Confirms tree inclusion
-
-## Real-World Applications
-
-### Supply Chain Verification
-Track and verify product authenticity:
-```json
-{
-  "productId": "ABC123",
-  "manufacturerData": {
-    "timestamp": "2024-01-26T10:00:00Z",
-    "location": "Factory-01",
-    "batchNumber": "B789"
-  },
-  "merkleProof": {
-    "proof": ["hash1", "hash2"],
-    "rootHash": "root123",
-    "verified": true
-  }
-}
-```
-
-### Document Certification
-Verify document authenticity:
-```json
-{
-  "documentId": "DOC456",
-  "documentHash": "hash789",
-  "certificationData": {
-    "issueDate": "2024-01-26",
-    "issuer": "Authority-X"
-  },
-  "merkleVerification": {
-    "treeRoot": "root456",
-    "proof": ["proofHash1", "proofHash2"],
-    "verificationStatus": true
-  }
-}
-```
-
-### Data Integrity Verification
-Validate data authenticity:
-```json
-{
-  "dataSet": "Dataset-789",
-  "timestamp": "2024-01-26T15:30:00Z",
-  "dataSample": "sample123",
-  "verification": {
-    "merkleRoot": "root789",
-    "proof": ["hash3", "hash4"],
-    "isValid": true
-  }
-}
-```
-
-## Implementation Guide
-
-### Initial Setup
+1. Clone the repository:
 ```bash
-# Initialize new project
-dfx new merkle_tree_project
+git clone https://github.com/yourusername/certified-merkle-canister.git
+cd certified-merkle-canister
+```
 
-# Navigate to project directory
-cd merkle_tree_project
+2. Install dependencies:
+```bash
+dfx start --background
+npm install
+```
 
-# Deploy contract
+3. Deploy the canister:
+```bash
 dfx deploy
 ```
 
-### Basic Usage Flow
+## Usage
 
-1. **Admin Registration**
-   ```motoko
-   // Register admin (first deployment only)
-   let registration = await MerkleTree.registerAdmin();
-   ```
+### 1. Register Admin
 
-2. **Tree Creation**
-   ```motoko
-   // Create tree with dataset
-   let treeCreation = await MerkleTree.createMerkleTree([
-     "data1",
-     "data2",
-     "data3"
-   ]);
-   ```
+First, register an admin who will have permissions to create Merkle trees:
 
-3. **Proof Generation**
-   ```motoko
-   // Generate proof for specific data
-   let proof = await MerkleTree.getMerkleProof("data1");
-   ```
+```motoko
+// Using dfx
+dfx canister call merkle_canister registerAdmin
 
-4. **Data Verification**
-   ```motoko
-   // Verify data inclusion
-   let verification = await MerkleTree.verifyDataInTree(
-     "data1",
-     rootHash
-   );
-   ```
-
-### Advanced Integration
-
-#### API Integration
-```javascript
-// Example API response structure
-{
-  "status": "success",
-  "data": {
-    "item": "data1",
-    "merkleProof": {
-      "proof": ["hash1", "hash2"],
-      "rootHash": "root123",
-      "timestamp": "2024-01-26T12:00:00Z"
-    },
-    "verification": {
-      "status": true,
-      "verifiedAt": "2024-01-26T12:01:00Z"
-    }
-  }
-}
+// Using Motoko
+let result = await canister.registerAdmin();
 ```
 
-#### Batch Processing
+### 2. Create a Certified Merkle Tree
+
+Create a new Merkle tree with certified data:
+
 ```motoko
-// Process multiple items
-let batchData = [
-  "item1",
-  "item2",
-  "item3"
-];
+let data = ["item1", "item2", "item3"];
+let result = await canister.createCertifiedMerkleTree(data);
+```
 
-let batchTree = await MerkleTree.createMerkleTree(batchData);
+### 3. Verify Certified Data
 
-// Generate proofs for each item
-for (item in batchData.vals()) {
-  let itemProof = await MerkleTree.getMerkleProof(item);
-  // Store or process proof
-}
+Verify that data exists in a certified Merkle tree:
+
+```motoko
+let isValid = await canister.verifyCertifiedData(
+    "item1",
+    rootHash,
+    timestamp
+);
+```
+
+### 4. Get Certified Proof
+
+Obtain a proof for data verification:
+
+```motoko
+let proofResult = await canister.getCertifiedProof("item1");
+```
+
+## API Reference
+
+### Admin Management
+
+#### `registerAdmin()`
+- Registers the caller as the admin
+- Returns: `Result<Text, Text>`
+
+### Tree Operations
+
+#### `createCertifiedMerkleTree(data: [Text])`
+- Creates a new certified Merkle tree
+- Parameters:
+  - `data`: Array of text items to include in the tree
+- Returns: `Result<CertifiedData, Text>`
+
+### Query Operations
+
+#### `verifyCertifiedData(data: Text, rootHash: Text, timestamp: Timestamp)`
+- Verifies if data exists in a certified tree
+- Parameters:
+  - `data`: The data to verify
+  - `rootHash`: The root hash of the tree
+  - `timestamp`: The timestamp of certification
+- Returns: `Bool`
+
+#### `getCertifiedProof(data: Text)`
+- Gets proof for data verification
+- Parameters:
+  - `data`: The data to get proof for
+- Returns: `?{proof: [HashType]; certData: CertifiedData}`
+
+## Data Structures
+
+### CertifiedData
+```motoko
+type CertifiedData = {
+    hash: HashType;
+    timestamp: Timestamp;
+};
+```
+
+### HashType
+```motoko
+type HashType = Text;
 ```
 
 ## Security Considerations
 
-### Data Protection
-- Hash functions are one-way
-- Proofs don't reveal other data
-- Admin-only tree creation
+- Always verify timestamps when checking certified data
+- Keep admin credentials secure
+- Regular updates to maintain security
+- Implement proper error handling in client applications
 
-## Performance Optimization
+## Best Practices
 
-The contract implements several optimization strategies:
-- Efficient hash storage
-- Optimized proof generation
-- Memory-efficient data structures
-- Balanced tree construction
+1. **Data Validation**
+   - Always validate input data before creating trees
+   - Implement proper error handling
+   - Check timestamp validity
+
+2. **Performance**
+   - Batch operations when possible
+   - Use query calls for read operations
+   - Implement proper caching strategies
+
+3. **Security**
+   - Regular security audits
+   - Keep dependencies updated
+   - Monitor canister cycles
 
 ## Contributing
 
-Contributions are welcome! Please follow these steps:
 1. Fork the repository
 2. Create a feature branch
-3. Submit a pull request
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT License - see LICENSE file for details
+
+## Development
+
+### Local Development
+
+1. Start the local network:
+```bash
+dfx start --background
+```
+
+2. Deploy locally:
+```bash
+dfx deploy
+```
+
+### Testing
+
+Run the test suite:
+```bash
+dfx test
+```
 
 ## Support
 
-For support and questions:
-- Create an issue in the repository
-- Contact the development team
-- Check documentation updates
+For support, please open an issue in the GitHub repository or contact the maintainers.
+
+## Acknowledgments
+
+- Internet Computer Protocol team
+- Merkle tree implementation inspired by standard cryptographic practices
+
+## Project Status
+
+This project is under active development. Please report any issues or suggest improvements via GitHub issues.
