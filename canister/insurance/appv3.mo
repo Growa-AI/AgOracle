@@ -35,6 +35,7 @@ actor class InsuranceSystem() {
     };
 
     public type DataMatchType = {
+        #pending;
         #limited;
         #accurate;
         #partial
@@ -382,7 +383,7 @@ actor class InsuranceSystem() {
                                             claimReason = claimReason;
                                             claimAmount = claimAmount;
                                             damagePertentage = damagePertentage;
-                                            status = #limited;  
+                                            status = #pending;  
                                             decision = null;    
                                             report = null;
                                             dataEvent = dataEvent;
