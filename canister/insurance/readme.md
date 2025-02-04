@@ -1,202 +1,291 @@
-# Crop Insurance Smart Contract
+# Smart Agriculture Insurance System
 
-This smart contract implements a decentralized crop insurance system on the Internet Computer platform. It allows farmers to insure their crops against various natural disasters and weather events, manage policies, and handle insurance claims.
+A decentralized insurance system built on the Internet Computer Protocol (ICP) for managing agricultural insurance policies and claims. This system provides a comprehensive solution for farmers to insure their crops against various natural disasters and risks.
+
+## Table of Contents
+- [Features](#features)
+- [System Architecture](#system-architecture)
+- [Smart Contract Components](#smart-contract-components)
+- [Data Types](#data-types)
+- [User Roles](#user-roles)
+- [Credit System](#credit-system)
+- [API Reference](#api-reference)
+- [Installation](#installation)
+- [Usage Examples](#usage-examples)
+- [Security](#security)
+- [Analytics](#analytics)
 
 ## Features
 
+- Role-based access control (Admin and Moderators)
 - User registration and credit management
 - Policy creation and management
-- Claim submission and processing
+- Claim processing with multi-stage verification
 - Analytics and reporting
-- Admin controls and system management
+- USD-based pricing system
+- Cycle management for transactions
 
 ## System Architecture
 
-### Core Types
+### Core Components
+1. **User Management System**
+   - User registration
+   - Credit system
+   - Role management
 
-#### ClaimReason
-Supported reasons for insurance claims: 
-- Hail / Drought / Flood / Frost / Pest / Disease / Fire / Wind
-- Other
+2. **Policy Management**
+   - Policy creation
+   - Policy validation
+   - Policy querying
 
-#### ClaimStatus
-Possible states for a claim:
-- Pending
-- Approved
-- Rejected
+3. **Claims Processing**
+   - Claim submission
+   - Status tracking
+   - Verification system
 
-#### DataMatchType
-Quality of data verification:
-- Limited
-- Accurate
-- Partial
+4. **Analytics Engine**
+   - Real-time statistics
+   - User analytics
+   - System-wide analytics
 
-### Credit System
+## Data Types
 
-The system uses two types of credits:
-1. **Onboarding Credits**: Used to create new policies
-2. **Claim Credits**: Used to submit insurance claims
+### Claim Reasons
+```motoko
+public type ClaimReason = {
+    #hail;
+    #drought;
+    #flood;
+    #frost;
+    #pest;
+    #disease;
+    #fire;
+    #wind;
+    #other
+};
+```
 
-Credits can be purchased in the following ways:
-- Onboarding credits are sold in bundles (configurable size and price)
-- Claim credits are sold individually
+### Decision States
+```motoko
+public type Decision = {
+    #approved;
+    #rejected
+};
+```
+
+### Data Match Types
+```motoko
+public type DataMatchType = {
+    #pending;
+    #limited;
+    #accurate;
+    #partial
+};
+```
+
+### Policy Structure
+```motoko
+public type Policy = {
+    policyId: Text;
+    userId: Principal;
+    country: Text;
+    insuredAmount: Float;
+    crop: Text;
+    landPolygon: Text;
+    creationTime: Time.Time
+};
+```
+
+## User Roles
+
+### Admin
+- System configuration
+- Moderator management
+- Cycle withdrawal
+- USD rate management
+- Analytics access
+
+### Moderators
+- Analytics access
+- Claim verification
+- System monitoring
+
+### Users
+- Policy creation
+- Claim submission
+- Credit purchase
+- Personal analytics
+
+## Credit System
+
+### Types of Credits
+1. **Onboarding Credits**
+   - Used for creating policies
+   - Initial allocation: 200 credits
+   - Purchasable in bundles
+
+2. **Claim Credits**
+   - Used for submitting claims
+   - Initial allocation: 5 credits
+   - Individually purchasable
+
+### Pricing Structure
+```motoko
+public type PriceUSD = {
+    bundleSize: Nat;
+    bundlePriceUSD: Float;
+    claimPriceUSD: Float
+};
+```
+
+## API Reference
 
 ### User Management
-
-#### Registration
 ```motoko
-public shared({ caller }) func registerUser(): async Result.Result<Text, Text>
+public shared func registerUser() : async Result.Result<Text, Text>
+public shared func addUserCredits(userId: Principal, onboardingCredits: Nat, claimCredits: Nat) : async Result.Result<Text, Text>
 ```
-- Creates a new user account
-- Provides initial credits (200 onboarding + 5 claim credits)
-- Returns registration confirmation or error
-
-#### Credit Purchase
-```motoko
-public shared({ caller }) func purchaseOnboardingCredits(bundles: Nat): async Result.Result<Text, Text>
-public shared({ caller }) func purchaseClaimCredits(amount: Nat): async Result.Result<Text, Text>
-```
-- Purchase additional credits
-- Requires payment in cycles
-- Returns purchase confirmation or error
 
 ### Policy Management
-
-#### Create Policy
 ```motoko
-public shared({ caller }) func createPolicy(
+public shared func createPolicy(
     policyId: Text,
     country: Text,
     insuredAmount: Float,
     crop: Text,
     landPolygon: Text
-): async Result.Result<Text, Text>
+) : async Result.Result<Text, Text>
 ```
-- Creates a new insurance policy
-- Requires onboarding credits
-- Validates policy details
-- Returns policy creation confirmation or error
 
-#### Query Policies
+### Claims Management
 ```motoko
-public query func getPolicy(userId: Principal, policyId: Text): async Result.Result<Policy, Text>
-public query func getUserPolicies(userId: Principal): async Result.Result<[Policy], Text>
-```
-- Retrieve specific policy or all user policies
-- Returns policy details or error
-
-### Claim Management
-
-#### Submit Claim
-```motoko
-public shared({ caller }) func createClaim(
+public shared func createClaim(
     policyId: Text,
     locationPoint: Text,
     claimReason: ClaimReason,
     claimAmount: Float,
     damagePertentage: Float,
-    claimId: Text
-): async Result.Result<Text, Text>
-```
-- Creates a new insurance claim
-- Requires claim credits
-- Validates claim details and policy ownership
-- Returns claim creation confirmation or error
-
-#### Query Claims
-```motoko
-public query func getAllPendingClaims(): async Result.Result<[Claim], Text>
-public query func getUserClaims(userId: Principal): async Result.Result<[Claim], Text>
-public query func getClaim(userId: Principal, claimId: Text): async Result.Result<Claim, Text>
-```
-- Get pending claims, user claims, or specific claim
-- Returns claim details or error
-
-#### Update Claim Status
-```motoko
-public shared({ caller }) func updateClaimStatus(
-    userId: Principal,
     claimId: Text,
-    newStatus: ClaimStatus,
-    dataMatchType: ?DataMatchType,
-    report: ?Text
-): async Result.Result<Text, Text>
+    dataEvent: Text
+) : async Result.Result<Text, Text>
 ```
-- Admin function to process claims
-- Updates claim status and adds verification data
-- Returns update confirmation or error
 
 ### Analytics
-
-#### User Analytics
 ```motoko
-public query func getUserAnalytics(userId: Principal): async Result.Result<AnalyticsStats, Text>
-```
-Returns:
-- Total policies
-- Total claims (by status)
-- Total insured amount
-- Total claim amount
-- Total paid amount
-
-#### System Analytics
-```motoko
-public query({ caller }) func getSystemAnalytics(): async Result.Result<AnalyticsStats, Text>
-```
-Returns system-wide statistics (admin only)
-
-## Usage Example
-
-```motoko
-// 1. Register user
-let registerResult = await insuranceSystem.registerUser();
-
-// 2. Create policy
-let createPolicyResult = await insuranceSystem.createPolicy(
-    "GRAIN2024-001",
-    "Italy",
-    50000.00,
-    "Wheat",
-    "[[45.4642, 9.1900], [45.4643, 9.1901]]"
-);
-
-// 3. Submit claim
-let createClaimResult = await insuranceSystem.createClaim(
-    "GRAIN2024-001",
-    "45.4643, 9.1901",
-    #hail,
-    15000.00,
-    30.0,
-    "CLAIM2024-001"
-);
-
-// 4. Process claim (admin only)
-let updateClaimResult = await insuranceSystem.updateClaimStatus(
-    userId,
-    "CLAIM2024-001",
-    #approved,
-    ?#accurate,
-    ?"Damage verified through satellite imagery"
-);
+public shared func getSystemAnalytics() : async Result.Result<AnalyticsStats, Text>
+public query func getUserAnalytics(userId: Principal) : async Result.Result<AnalyticsStats, Text>
+public query func getTopInsurers(limit: Nat) : async Result.Result<[(Principal, Float)], Text>
 ```
 
-## Security Considerations
+## Installation
 
-1. **Principal Validation**: All functions validate caller principals
-2. **Ownership Verification**: Claims can only be created for owned policies
-3. **Credit System**: Prevents abuse through credit requirements
-4. **Admin Controls**: Sensitive operations restricted to admin
-5. **Data Validation**: All inputs are validated before processing
-
-## Installation and Deployment
-
-1. Clone the repository
-2. Install the DFINITY SDK
-3. Deploy using:
+1. Install the DFINITY SDK:
 ```bash
-dfx deploy insurance_system
+sh -ci "$(curl -fsSL https://sdk.dfinity.org/install.sh)"
 ```
+
+2. Clone the repository:
+```bash
+git clone https://github.com/your-repo/agriculture-insurance.git
+cd agriculture-insurance
+```
+
+3. Deploy the canister:
+```bash
+dfx deploy
+```
+
+## Usage Examples
+
+### Registering a User
+```motoko
+let result = await InsuranceSystem.registerUser();
+switch (result) {
+    case (#ok(message)) { /* Handle success */ };
+    case (#err(error)) { /* Handle error */ };
+};
+```
+
+### Creating a Policy
+```motoko
+let result = await InsuranceSystem.createPolicy(
+    "POL-001",
+    "USA",
+    50000.0,
+    "Corn",
+    "POLYGON((...))"
+);
+```
+
+### Submitting a Claim
+```motoko
+let result = await InsuranceSystem.createClaim(
+    "POL-001",
+    "POINT(latitude longitude)",
+    #drought,
+    25000.0,
+    50.0,
+    "CLM-001",
+    "EVENT-001"
+);
+```
+
+## Security
+
+### Authentication
+- Principal-based authentication
+- Role-based access control
+- Function-level authorization checks
+
+### Data Validation
+- Input validation for all functions
+- Principal validation
+- Amount validation for financial transactions
+
+### Error Handling
+- Comprehensive error messages
+- Result type for all operations
+- Exception handling for cycle operations
+
+## Analytics
+
+### System Analytics
+```motoko
+type AnalyticsStats = {
+    totalPolicies: Nat;
+    totalClaims: Nat;
+    totalApprovedClaims: Nat;
+    totalPendingClaims: Nat;
+    totalRejectedClaims: Nat;
+    totalInsuredAmount: Float;
+    totalClaimAmount: Float;
+    totalPaidAmount: Float;
+};
+```
+
+### Available Metrics
+- Total policies and claims
+- Approval rates
+- Financial metrics
+- User statistics
+- Top insurers
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
+## Support
+
+For support, please contact the development team or raise an issue in the GitHub repository.
+
+---
+
+For more information about the Internet Computer Protocol and Motoko, visit [DFINITY Documentation](https://sdk.dfinity.org/docs/).
