@@ -8,11 +8,8 @@ import Int "mo:base/Int";
 import Array "mo:base/Array";
 import Float "mo:base/Float";
 import Nat "mo:base/Nat";
-import Nat64 "mo:base/Nat64";
-import Debug "mo:base/Debug";
 import ExperimentalCycles "mo:base/ExperimentalCycles";
 import Iter "mo:base/Iter";
-import Option "mo:base/Option";
 import Order "mo:base/Order";
 
 actor class InsuranceSystem() {
@@ -634,31 +631,31 @@ actor class InsuranceSystem() {
   };
 
   public shared ({caller}) func withdraw(amount : Nat, recipient : Principal) : async Result.Result<Text, Text> {
-    if (not isAdmin(caller)) {
-      return #err("Only admin can withdraw cycles")
+        if (not isAdmin(caller)) {
+            return #err("Only admin can withdraw cycles")
+        };
+
+        let available = ExperimentalCycles.balance();
+        if (available < amount) {
+            return #err("Insufficient cycles")
+        };
+
+        try {
+            let recipient_actor = actor (Principal.toText(recipient)) : actor {
+                wallet_receive : shared () -> async Nat
+            };
+            ExperimentalCycles.add<system>(amount);
+            let cycles_received = await recipient_actor.wallet_receive();
+
+            if (cycles_received == amount) {
+                #ok("Successfully transferred cycles")
+            } else {
+                #err("Transfer failed")
+            }
+        } catch (e) {
+            #err("Error during transfer: " # Error.message(e))
+        }
     };
-
-    let available = ExperimentalCycles.balance();
-    if (available < amount) {
-      return #err("Insufficient cycles")
-    };
-
-    try {
-      let recipient_actor = actor (Principal.toText(recipient)) : actor {
-        wallet_receive : shared () -> async Nat
-      };
-      ExperimentalCycles.add(amount);
-      let cycles_received = await recipient_actor.wallet_receive();
-
-      if (cycles_received == amount) {
-        #ok("Successfully transferred cycles")
-      } else {
-        #err("Transfer failed")
-      }
-    } catch (e) {
-      #err("Error during transfer: " # Error.message(e))
-    }
-  };
 
   public query func getCyclesBalance() : async Nat {
     ExperimentalCycles.balance()
