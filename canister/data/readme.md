@@ -1,14 +1,15 @@
 # ICP Device Readings Smart Contract
 
-A Motoko smart contract for the Internet Computer Protocol (ICP) that manages device readings with role-based access control. The contract allows storing and retrieving readings from both physical and virtual devices, with support for timestamps and data integrity through hashing.
+A Motoko smart contract for the Internet Computer Protocol (ICP) that manages device readings with role-based access control. The contract allows storing and retrieving readings from both physical and virtual devices with robust data integrity through SHA256 hashing.
 
 ## Features
 
 - Role-based access control (Admin, Moderator, User)
-- Support for physical and virtual devices
-- Flexible timestamp management
-- Reading hash generation for data integrity
-- Comprehensive filtering and querying capabilities
+- Support for both physical and virtual devices
+- Flexible timestamp handling (automatic or manual)
+- SHA256-based data integrity with unique hash generation
+- Comprehensive query capabilities with filtering options
+- Hash-based reading retrieval system
 
 ## Data Structures
 
@@ -31,7 +32,7 @@ type Reading = {
 };
 ```
 
-### Reading with Hash
+### Reading With Hash
 ```motoko
 type ReadingWithHash = {
     device_id: Text;
@@ -46,55 +47,69 @@ type ReadingWithHash = {
 ## Role Management
 
 ### Available Roles
-- **Admin**: Full control over the contract
-- **Moderator**: Can insert readings and manage users (except admin)
-- **User**: Basic access, cannot perform write operations
-
-### Role-based Functions
-- `assignAdmin()`: Initial admin assignment
-- `transferOwnership(newOwner: Principal)`: Transfer admin rights
-- `addAuthorizedUser(user: Principal, role: Role)`: Add new user with specific role
-- `removeAuthorizedUser(user: Principal)`: Remove user access
-- `getUserRole(user: Principal)`: Query user's role
-
-## Reading Management
-
-### Inserting Readings
 ```motoko
-insertReading(
+type Role = {
+    #Admin;
+    #Moderator;
+    #User;
+};
+```
+
+### Role Permissions
+
+#### Admin
+- Full system control
+- Add/remove users
+- Transfer ownership
+- Manage all readings
+- Access all queries
+
+#### Moderator
+- Insert readings
+- Remove users (except admin)
+- Access all queries
+
+#### User
+- Read-only access to queries
+
+## Function Reference
+
+### Admin Functions
+
+```motoko
+// Initialize admin (can only be called once)
+public shared(msg) func assignAdmin() : async Text
+
+// Transfer ownership to new admin
+public shared(msg) func transferOwnership(newOwner: Principal) : async Text
+
+// Add user with role
+public shared(msg) func addAuthorizedUser(user: Principal, role: Role) : async Text
+
+// Remove user
+public shared(msg) func removeAuthorizedUser(user: Principal) : async Text
+```
+
+### Reading Management
+
+```motoko
+// Insert new reading
+public shared(msg) func insertReading(
     device_id: Text,
     device_type: DeviceType,
     parameter: Text,
     value: Float,
     timestamp: ?Int
 ) : async Text
-```
 
-The timestamp parameter is optional:
-- If null: current time is used
-- If 0: current time is used
-- If other value: provided timestamp is used
+// Get reading by hash
+public query func getReadingByHash(hash: Text) : async ?ReadingWithHash
 
-### Querying Readings
+// Get all readings for device
+public query func getAllReadingsForDevice(device_id: Text) : async [ReadingWithHash]
 
-#### Get Readings by Time Range
-```motoko
-getReadings(device_id: Text, start_time: Int, end_time: Int) : async [ReadingWithHash]
-```
-
-#### Get All Readings for Device
-```motoko
-getAllReadingsForDevice(device_id: Text) : async [ReadingWithHash]
-```
-
-#### Get Multiple Device Readings
-```motoko
-getMultipleDeviceReadings(device_ids: [Text]) : async [(Text, [ReadingWithHash])]
-```
-
-#### Get Filtered Readings
-```motoko
-getFilteredReadings(
+// Get filtered readings
+public query func getFilteredReadings(
     device_ids: [Text],
     parameter: ?Text,
     device_type: ?DeviceType,
@@ -105,12 +120,13 @@ getFilteredReadings(
 
 ## Hash Generation
 
-The contract automatically generates a unique hash for each reading using the following fields:
-- device_id
-- device_type
-- parameter
-- value
-- created_at
+The contract uses a robust hash generation system that combines:
+- SHA256 hashing
+- Unique device prefix
+- Timestamp
+- Incremental nonce
+
+Hash format: `[DEVICE_PREFIX]-[SHA256_HASH]-[TIMESTAMP]`
 
 ## Usage Examples
 
@@ -119,24 +135,23 @@ The contract automatically generates a unique hash for each reading using the fo
 // First deployment - assign admin
 let result = await SmartContract.assignAdmin();
 
-// Transfer ownership to new admin
+// Transfer ownership
 let newAdminPrincipal = "...";
 await SmartContract.transferOwnership(newAdminPrincipal);
 ```
 
 ### Managing Users
 ```motoko
-// Add a moderator
-let moderatorPrincipal = "...";
-await SmartContract.addAuthorizedUser(moderatorPrincipal, #Moderator);
+// Add moderator
+await SmartContract.addAuthorizedUser(principal, #Moderator);
 
-// Remove a user
+// Remove user
 await SmartContract.removeAuthorizedUser(userPrincipal);
 ```
 
 ### Inserting Readings
 ```motoko
-// Insert reading with automatic timestamp
+// With automatic timestamp
 await SmartContract.insertReading(
     "device123",
     #Physical,
@@ -145,7 +160,7 @@ await SmartContract.insertReading(
     null
 );
 
-// Insert reading with specific timestamp
+// With manual timestamp
 await SmartContract.insertReading(
     "device123",
     #Physical,
@@ -157,11 +172,11 @@ await SmartContract.insertReading(
 
 ### Querying Readings
 ```motoko
-// Get all readings for a device
-let readings = await SmartContract.getAllReadingsForDevice("device123");
+// Get by hash
+let reading = await SmartContract.getReadingByHash("ABC123-...");
 
 // Get filtered readings
-let filteredReadings = await SmartContract.getFilteredReadings(
+let readings = await SmartContract.getFilteredReadings(
     ["device123", "device456"],
     ?"temperature",
     ?#Physical,
@@ -172,31 +187,46 @@ let filteredReadings = await SmartContract.getFilteredReadings(
 
 ## Security Considerations
 
-1. Only the admin can:
-   - Add new users
-   - Transfer ownership
-   - Assign roles
+1. Role-based Access:
+   - Only admin can add new users
+   - Only admin can transfer ownership
+   - Moderators can't modify admin
+   - Users have read-only access
 
-2. Moderators can:
-   - Insert readings
-   - Remove users (except admin)
-   - Insert readings
+2. Data Integrity:
+   - SHA256 hashing for all readings
+   - Unique hash generation including device ID, timestamp, and nonce
+   - Hash verification on retrieval
 
-3. Regular users:
-   - Can only perform read operations
-   - Cannot modify any data
+3. Timestamp Management:
+   - Flexible timestamp input
+   - Automatic timestamp if not provided
+   - Validation of timestamp ranges
 
 ## Installation
 
-1. Make sure you have the [DFINITY SDK](https://sdk.dfinity.org) installed
+1. Make sure you have [DFINITY SDK](https://sdk.dfinity.org) installed
 2. Clone this repository
-3. Deploy the contract:
+3. Deploy using:
 ```bash
 dfx deploy
 ```
 
 ## Testing
 
+Run the test suite:
 ```bash
 dfx test
 ```
+
+## Contributing
+
+Feel free to open issues and submit pull requests to help improve this contract.
+
+## License
+
+[MIT License](LICENSE)
+
+---
+
+For more information about the Internet Computer Protocol and Motoko, visit [DFINITY Documentation](https://sdk.dfinity.org/docs/)
