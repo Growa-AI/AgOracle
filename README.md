@@ -140,25 +140,6 @@ Our system is designed to grow. Here's what's on the horizon:
    - Machine learning for risk assessment
    - Mobile apps for easy access
 
-## For Developers
-
-### Getting Started
-
-1. Set up your development environment:
-   ```bash
-   dfx --version
-   ```
-
-2. Deploy the main registry:
-   ```bash
-   dfx deploy main_contract
-   ```
-
-3. Deploy the insurance service:
-   ```bash
-   dfx deploy insurance_system
-   ```
-
 ## In Conclusion
 
 Our decentralized insurance system represents more than just code - it's a step toward a more transparent, efficient, and accessible insurance future. Whether you're a farmer protecting your livelihood, a developer building new features, or an administrator managing the system, you're part of this journey toward decentralized finance.
