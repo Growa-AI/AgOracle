@@ -5,7 +5,6 @@ import Array "mo:base/Array";
 import Error "mo:base/Error";
 import Text "mo:base/Text";
 import Float "mo:base/Float";
-import Hash "mo:base/Hash";
 import Nat "mo:base/Nat";
 import Nat8 "mo:base/Nat8";
 import Nat32 "mo:base/Nat32";
