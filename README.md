@@ -4,6 +4,20 @@
 
 # Building a Decentralized Future: Insurance on the Internet Computer
 
+## Canister Address
+
+### Management: 
+https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=225eu-fyaaa-aaaad-qgghq-cai 
+
+### Data: 
+https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=v3bvf-3yaaa-aaaaj-az37a-cai 
+
+### Merkle Tree: 
+https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=gicre-hiaaa-aaaae-qakyq-cai 
+
+### Insurance: 
+https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=7kroo-2aaaa-aaaai-atcyq-cai 
+
 ## The Vision
 
 Imagine a world where farmers can instantly protect their crops against natural disasters, where insurance claims are processed transparently, and where trust is built into the system itself. This is the vision behind our decentralized insurance system built on the Internet Computer platform.
