@@ -255,6 +255,7 @@ actor SmartContract {
     private stable var owner: ?Principal = null;
     private var authorizedUsers = HashMap.HashMap<Principal, Role>(0, Principal.equal, Principal.hash);
     private var readings = HashMap.HashMap<Text, [Reading]>(0, Text.equal, Text.hash);
+    private var readingsWithHash = HashMap.HashMap<Text, [ReadingWithHash]>(0, Text.equal, Text.hash);
     private var readingsByHash = HashMap.HashMap<Text, Reading>(0, Text.equal, Text.hash);
     private stable var nonce: Nat = 0;
 
@@ -323,8 +324,9 @@ actor SmartContract {
         // Convert to hex string
         let hashHex = bytesToHex(hash);
         
-        // Take first 8 chars for prefix from device_id hash
+        // Take first 8 chars from device_id hash
         let deviceHash = sha256(deviceIdBytes);
+
         let prefix = textSlice(bytesToHex(deviceHash), 0, 8);
         
         // Get timestamp
@@ -459,10 +461,30 @@ actor SmartContract {
                     created_at = current_time;
                 };
 
-                // Generate hash before storing
+                // Genera l'hash una sola volta al momento dell'inserimento
                 let readingHash = generateReadingHash(reading);
                 
-                // Store in both maps
+                let readingWithHash: ReadingWithHash = {
+                    device_id;
+                    device_type;
+                    parameter;
+                    value;
+                    created_at = current_time;
+                    hash = readingHash;
+                };
+                
+                // Memorizza con l'hash
+                switch(readingsWithHash.get(device_id)) {
+                    case null {
+                        readingsWithHash.put(device_id, [readingWithHash]);
+                    };
+                    case (?existingReadings) {
+                        let newReadings = Array.append(existingReadings, [readingWithHash]);
+                        readingsWithHash.put(device_id, newReadings);
+                    };
+                };
+                
+                // Mantieni anche il vecchio sistema per compatibilità
                 switch(readings.get(device_id)) {
                     case null {
                         readings.put(device_id, [reading]);
@@ -482,21 +504,11 @@ actor SmartContract {
 
     // Get readings by time range
     public query func getReadings(device_id: Text, start_time: Int, end_time: Int) : async [ReadingWithHash] {
-        switch(readings.get(device_id)) {
+        switch(readingsWithHash.get(device_id)) {
             case null { return []; };
             case (?deviceReadings) {
-                let filteredReadings = Array.filter(deviceReadings, func (reading: Reading) : Bool {
+                Array.filter(deviceReadings, func (reading: ReadingWithHash) : Bool {
                     reading.created_at >= start_time and reading.created_at <= end_time
-                });
-                Array.map(filteredReadings, func (reading: Reading) : ReadingWithHash {
-                    {
-                        device_id = reading.device_id;
-                        device_type = reading.device_type;
-                        parameter = reading.parameter;
-                        value = reading.value;
-                        created_at = reading.created_at;
-                        hash = generateReadingHash(reading);
-                    }
                 })
             };
         };
@@ -521,20 +533,9 @@ actor SmartContract {
 
     // Get all readings for a specific device
     public query func getAllReadingsForDevice(device_id: Text) : async [ReadingWithHash] {
-        switch(readings.get(device_id)) {
+        switch(readingsWithHash.get(device_id)) {
             case null { return []; };
-            case (?deviceReadings) {
-                Array.map(deviceReadings, func (reading: Reading) : ReadingWithHash {
-                    {
-                        device_id = reading.device_id;
-                        device_type = reading.device_type;
-                        parameter = reading.parameter;
-                        value = reading.value;
-                        created_at = reading.created_at;
-                        hash = generateReadingHash(reading);
-                    }
-                })
-            };
+            case (?deviceReadings) { deviceReadings };
         };
     };
 
@@ -549,12 +550,12 @@ actor SmartContract {
         Array.map<Text, (Text, [ReadingWithHash])>(
             device_ids,
             func (device_id: Text) : (Text, [ReadingWithHash]) {
-                let deviceReadings = switch(readings.get(device_id)) {
+                let deviceReadings = switch(readingsWithHash.get(device_id)) {
                     case null { []; };
                     case (?readings) {
-                        let filtered = Array.filter<Reading>(
+                        let filtered = Array.filter<ReadingWithHash>(
                             readings,
-                            func (reading: Reading) : Bool {
+                            func (reading: ReadingWithHash) : Bool {
                                 let timeMatch = reading.created_at >= start_time and reading.created_at <= end_time;
                                 let paramMatch = switch(parameter) {
                                     case null { true };
@@ -567,16 +568,7 @@ actor SmartContract {
                                 timeMatch and paramMatch and typeMatch
                             }
                         );
-                        Array.map(filtered, func (reading: Reading) : ReadingWithHash {
-                            {
-                                device_id = reading.device_id;
-                                device_type = reading.device_type;
-                                parameter = reading.parameter;
-                                value = reading.value;
-                                created_at = reading.created_at;
-                                hash = generateReadingHash(reading);
-                            }
-                        })
+                        filtered
                     };
                 };
                 (device_id, deviceReadings)
@@ -593,4 +585,4 @@ actor SmartContract {
     public query func getUserRole(user: Principal) : async Role {
         return getCallerRole(user);
     };
-};
+}
