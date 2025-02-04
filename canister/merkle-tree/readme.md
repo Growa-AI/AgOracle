@@ -1,197 +1,208 @@
-# Certified Merkle Tree Canister
+# Secure Merkle Tree with SHA256 for ICP
 
-A Motoko-based Internet Computer canister that implements certified Merkle trees for secure data verification and querying. This canister provides a robust solution for maintaining verifiable data structures on the Internet Computer blockchain.
+A Motoko smart contract for the Internet Computer Protocol (ICP) that implements a secure Merkle Tree using SHA256 for hash generation. This contract is designed for verifying and managing sensor readings with cryptographic proofs.
 
 ## Features
 
-- **Certified Data Storage**: Implements secure data certification with timestamps
-- **Merkle Tree Implementation**: Full Merkle tree implementation with proof generation and verification
-- **Query Call Security**: Enhanced security for query calls using certified variables
-- **Temporal Validation**: Built-in timestamp verification to prevent replay attacks
-- **Upgradeable**: Maintains data consistency across canister upgrades
-- **Admin Controls**: Secure admin-only operations for tree creation and management
-
-## Prerequisites
-
-- [dfx](https://internetcomputer.org/docs/current/developer-docs/build/install-upgrade-remove) >= 0.9.0
-- [Node.js](https://nodejs.org) >= 14.0.0
-- [Internet Computer CLI](https://internetcomputer.org/docs/current/developer-docs/build/install-upgrade-remove)
-
-## Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/certified-merkle-canister.git
-cd certified-merkle-canister
-```
-
-2. Install dependencies:
-```bash
-dfx start --background
-npm install
-```
-
-3. Deploy the canister:
-```bash
-dfx deploy
-```
-
-## Usage
-
-### 1. Register Admin
-
-First, register an admin who will have permissions to create Merkle trees:
-
-```motoko
-// Using dfx
-dfx canister call merkle_canister registerAdmin
-
-// Using Motoko
-let result = await canister.registerAdmin();
-```
-
-### 2. Create a Certified Merkle Tree
-
-Create a new Merkle tree with certified data:
-
-```motoko
-let data = ["item1", "item2", "item3"];
-let result = await canister.createCertifiedMerkleTree(data);
-```
-
-### 3. Verify Certified Data
-
-Verify that data exists in a certified Merkle tree:
-
-```motoko
-let isValid = await canister.verifyCertifiedData(
-    "item1",
-    rootHash,
-    timestamp
-);
-```
-
-### 4. Get Certified Proof
-
-Obtain a proof for data verification:
-
-```motoko
-let proofResult = await canister.getCertifiedProof("item1");
-```
-
-## API Reference
-
-### Admin Management
-
-#### `registerAdmin()`
-- Registers the caller as the admin
-- Returns: `Result<Text, Text>`
-
-### Tree Operations
-
-#### `createCertifiedMerkleTree(data: [Text])`
-- Creates a new certified Merkle tree
-- Parameters:
-  - `data`: Array of text items to include in the tree
-- Returns: `Result<CertifiedData, Text>`
-
-### Query Operations
-
-#### `verifyCertifiedData(data: Text, rootHash: Text, timestamp: Timestamp)`
-- Verifies if data exists in a certified tree
-- Parameters:
-  - `data`: The data to verify
-  - `rootHash`: The root hash of the tree
-  - `timestamp`: The timestamp of certification
-- Returns: `Bool`
-
-#### `getCertifiedProof(data: Text)`
-- Gets proof for data verification
-- Parameters:
-  - `data`: The data to get proof for
-- Returns: `?{proof: [HashType]; certData: CertifiedData}`
+- SHA256-based hash generation
+- Merkle tree implementation with secure proofs
+- Support for multiple sensor readings
+- Efficient data verification system
+- Comprehensive test functionality
+- Tree statistics and monitoring
 
 ## Data Structures
 
-### CertifiedData
+### Types
 ```motoko
-type CertifiedData = {
-    hash: HashType;
+private type HashType = Text;
+private type Timestamp = Int;
+
+private type SensorReading = {
+    sensorHash: HashType;
     timestamp: Timestamp;
+};
+
+private type MerkleTreeRecord = {
+    rootHash: HashType;
+    readings: [SensorReading];
+    timestamp: Timestamp;
+    totalReadings: Nat;
 };
 ```
 
-### HashType
+## Core Functions
+
+### Creating Merkle Trees
 ```motoko
-type HashType = Text;
+public shared func createSensorMerkleTree(readings: [Text]) : async Result.Result<MerkleTreeRecord, Text>
+```
+Creates a new Merkle tree from an array of sensor readings. Each reading is hashed using SHA256.
+
+### Data Verification
+```motoko
+public query func verifySensorReading(rootHash: HashType, sensorHash: Text) : async Bool
+```
+Verifies if a specific sensor reading exists in a given Merkle tree.
+
+### Getting Merkle Proofs
+```motoko
+public query func getMerkleProof(rootHash: HashType, dataHash: Text) : async ?{
+    proof: [HashType];
+    index: Nat;
+}
+```
+Generates a Merkle proof for a specific data hash.
+
+### Verifying Proofs
+```motoko
+public query func verifyMerkleProof(
+    rootHash: HashType,
+    dataHash: Text,
+    proof: [HashType],
+    index: Nat
+) : async Bool
+```
+Verifies a Merkle proof for a given data hash.
+
+## Usage Examples
+
+### Creating a New Merkle Tree
+```motoko
+// Create sensor readings
+let readings = [
+    "sensor1_reading_123",
+    "sensor2_reading_456",
+    "sensor3_reading_789"
+];
+
+// Create Merkle tree
+let result = await contract.createSensorMerkleTree(readings);
+switch(result) {
+    case (#ok(tree)) {
+        // Tree created successfully
+        let rootHash = tree.rootHash;
+    };
+    case (#err(error)) {
+        // Handle error
+    };
+};
 ```
 
-## Security Considerations
+### Verifying Data
+```motoko
+// Verify a reading exists
+let exists = await contract.verifySensorReading(rootHash, "sensor1_reading_123");
 
-- Always verify timestamps when checking certified data
-- Keep admin credentials secure
-- Regular updates to maintain security
-- Implement proper error handling in client applications
-
-## Best Practices
-
-1. **Data Validation**
-   - Always validate input data before creating trees
-   - Implement proper error handling
-   - Check timestamp validity
-
-2. **Performance**
-   - Batch operations when possible
-   - Use query calls for read operations
-   - Implement proper caching strategies
-
-3. **Security**
-   - Regular security audits
-   - Keep dependencies updated
-   - Monitor canister cycles
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-## License
-
-MIT License - see LICENSE file for details
-
-## Development
-
-### Local Development
-
-1. Start the local network:
-```bash
-dfx start --background
+// Get and verify proof
+let proofResult = await contract.getMerkleProof(rootHash, "sensor1_reading_123");
+switch(proofResult) {
+    case (?merkleProof) {
+        let isValid = await contract.verifyMerkleProof(
+            rootHash,
+            "sensor1_reading_123",
+            merkleProof.proof,
+            merkleProof.index
+        );
+    };
+    case (null) {
+        // Handle not found case
+    };
+};
 ```
 
-2. Deploy locally:
+## Querying Tree Information
+
+### Get Latest Tree
+```motoko
+public query func getLatestTree() : async ?MerkleTreeRecord
+```
+Returns the most recently created Merkle tree.
+
+### Get Tree Statistics
+```motoko
+public query func getTreeStats() : async Text
+```
+Returns comprehensive statistics about all stored trees including:
+- Total number of trees
+- Total number of readings
+- Average readings per tree
+- Maximum/minimum readings
+- Last update timestamp
+
+## Security Features
+
+1. **SHA256 Hashing**
+   - Cryptographically secure hash generation
+   - Built-in SHA256 implementation
+   - No external dependencies
+
+2. **Safe Memory Management**
+   - Efficient buffer usage
+   - Stable variable handling for upgrades
+   - Safe type operations
+
+3. **Data Integrity**
+   - Merkle proof verification
+   - Timestamp tracking
+   - Unique hash generation
+
+## Testing
+
+The contract includes a built-in testing function:
+```motoko
+public func testMerkleVerification() : async Text
+```
+This function runs a comprehensive test suite that:
+- Creates a test Merkle tree
+- Verifies multiple readings
+- Tests proof generation and verification
+- Tests invalid data handling
+
+## Installation
+
+1. Make sure you have the [DFINITY SDK](https://sdk.dfinity.org) installed
+2. Clone this repository
+3. Deploy using:
 ```bash
 dfx deploy
 ```
 
-### Testing
+## Technical Implementation
 
-Run the test suite:
-```bash
-dfx test
-```
+### SHA256
+The contract includes a full implementation of SHA256, featuring:
+- Standard SHA256 constants and operations
+- Efficient byte manipulation
+- Hexadecimal output formatting
 
-## Support
+### Merkle Tree Construction
+The Merkle tree is built using:
+- Paired hashing of leaves
+- Bottom-up tree construction
+- Efficient proof generation
 
-For support, please open an issue in the GitHub repository or contact the maintainers.
+### Proof Generation
+Merkle proofs are generated by:
+- Tracking sibling nodes
+- Safe index manipulation
+- Buffer-based storage
 
-## Acknowledgments
+## Performance Considerations
 
-- Internet Computer Protocol team
-- Merkle tree implementation inspired by standard cryptographic practices
+- Efficient storage using HashMaps
+- Optimized proof generation
+- Minimal memory footprint
+- Safe numeric operations
 
-## Project Status
+## Contributing
 
-This project is under active development. Please report any issues or suggest improvements via GitHub issues.
+Feel free to open issues and submit pull requests to help improve this contract.
+
+## License
+
+[MIT License](LICENSE)
+
+---
+
+For more information about the Internet Computer Protocol and Motoko, visit [DFINITY Documentation](https://sdk.dfinity.org/docs/).
