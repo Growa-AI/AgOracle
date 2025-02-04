@@ -15,15 +15,8 @@ This smart contract implements a decentralized crop insurance system on the Inte
 ### Core Types
 
 #### ClaimReason
-Supported reasons for insurance claims:
-- Hail
-- Drought
-- Flood
-- Frost
-- Pest
-- Disease
-- Fire
-- Wind
+Supported reasons for insurance claims: 
+- Hail / Drought / Flood / Frost / Pest / Disease / Fire / Wind
 - Other
 
 #### ClaimStatus
