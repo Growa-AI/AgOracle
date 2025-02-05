@@ -6,6 +6,9 @@
 
 ## Canister Address
 
+### Frontend:
+https://tvbi5-ziaaa-aaaai-atdxa-cai.icp0.io/
+
 ### Management: 
 https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=225eu-fyaaa-aaaad-qgghq-cai 
 
